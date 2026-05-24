@@ -1,0 +1,11 @@
+type: custom:river-wise-card
+title: Bourton Dickler
+provider: uk_ea
+gauge: 1029TH
+uk_station: 1029TH
+units: metric
+show_forecast: false
+show_impacts: true
+grid_options:
+  rows: full
+  columns: 18

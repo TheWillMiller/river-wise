@@ -1,0 +1,79 @@
+name: Beta Install Report
+description: Report a RiverWise beta install, update, or runtime problem.
+title: "[Beta Install]: "
+labels:
+  - beta
+  - install-report
+body:
+  - type: input
+    id: riverwise_version
+    attributes:
+      label: RiverWise version
+      placeholder: v0.2.1
+    validations:
+      required: true
+  - type: input
+    id: home_assistant_version
+    attributes:
+      label: Home Assistant version
+    validations:
+      required: true
+  - type: input
+    id: hacs_version
+    attributes:
+      label: HACS version
+    validations:
+      required: false
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Install method
+      options:
+        - HACS custom repository
+        - Manual local resource
+        - CDN test resource
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Data provider
+      options:
+        - US NOAA/NWS NWPS
+        - UK Environment Agency
+        - Other/unsure
+    validations:
+      required: true
+  - type: input
+    id: gauge
+    attributes:
+      label: Gauge or station code
+      placeholder: MELO1 / CNWS1 / 1029TH
+    validations:
+      required: true
+  - type: input
+    id: browser_device
+    attributes:
+      label: Browser/device
+      placeholder: Chrome on Windows, Safari on iPhone, HA Companion App, etc.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: What happened?
+      options:
+        - label: The card appeared in the card picker.
+        - label: The visual editor opened.
+        - label: Settings persisted after refresh.
+        - label: Gauge data loaded.
+        - label: The hydrograph rendered.
+        - label: Something is broken.
+  - type: textarea
+    id: details
+    attributes:
+      label: Details, screenshots, or console errors
+      description: Paste browser console errors or attach screenshots if something broke.
+    validations:
+      required: false

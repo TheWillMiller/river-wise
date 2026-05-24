@@ -1,0 +1,11 @@
+type: custom:river-wise-card
+title: Ohio River at Meldahl Dam
+provider: us_nwps
+gauge: MELO1
+gauge_state: OH
+units: english
+show_forecast: true
+show_impacts: true
+grid_options:
+  rows: full
+  columns: 18

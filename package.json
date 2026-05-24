@@ -1,0 +1,32 @@
+{
+  "name": "river-wise-card",
+  "version": "0.2.1",
+  "description": "River, lake, reservoir, and flood gauge dashboard card for Home Assistant.",
+  "type": "module",
+  "files": [
+    "river-wise-card.js",
+    "README.md",
+    "info.md",
+    "hacs.json",
+    "examples"
+  ],
+  "scripts": {
+    "check": "node --check river-wise-card.js"
+  },
+  "keywords": [
+    "home-assistant",
+    "hacs",
+    "dashboard",
+    "lovelace",
+    "custom-card",
+    "noaa",
+    "nws",
+    "nwps",
+    "river",
+    "flood",
+    "gauge",
+    "environment-agency"
+  ],
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "private": false
+}

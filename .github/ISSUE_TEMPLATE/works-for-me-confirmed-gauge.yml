@@ -1,0 +1,74 @@
+name: Works For Me / Confirmed Gauge
+description: Confirm a RiverWise install and gauge/station that works.
+title: "[Works For Me]: "
+labels:
+  - works-for-me
+  - confirmed-gauge
+body:
+  - type: input
+    id: riverwise_version
+    attributes:
+      label: RiverWise version
+      placeholder: v0.2.1
+    validations:
+      required: true
+  - type: input
+    id: home_assistant_version
+    attributes:
+      label: Home Assistant version
+    validations:
+      required: true
+  - type: input
+    id: hacs_version
+    attributes:
+      label: HACS version
+    validations:
+      required: false
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Data provider
+      options:
+        - US NOAA/NWS NWPS
+        - UK Environment Agency
+        - Other/unsure
+    validations:
+      required: true
+  - type: input
+    id: gauge
+    attributes:
+      label: Gauge or station code
+      placeholder: MELO1 / CNWS1 / 1029TH
+    validations:
+      required: true
+  - type: input
+    id: area
+    attributes:
+      label: Location/general area
+      placeholder: Ohio River / Waccamaw River / River Thames
+    validations:
+      required: true
+  - type: input
+    id: browser_device
+    attributes:
+      label: Browser/device
+    validations:
+      required: true
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Install method
+      options:
+        - HACS custom repository
+        - Manual local resource
+        - CDN test resource
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes or screenshot
+      description: Optional screenshot or notes about what worked.
+    validations:
+      required: false
