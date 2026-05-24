@@ -1,6 +1,6 @@
 {
   "name": "river-wise-card",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "River, lake, reservoir, and flood gauge dashboard card for Home Assistant.",
   "type": "module",
   "files": [

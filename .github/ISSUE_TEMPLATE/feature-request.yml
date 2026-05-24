@@ -22,7 +22,7 @@ body:
     id: riverwise_version
     attributes:
       label: RiverWise version
-      placeholder: v0.2.3
+      placeholder: v0.2.4
     validations:
       required: false
   - type: input

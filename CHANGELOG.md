@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.2.4
+
+### Fixed
+
+- Fixed the UK station dropdown not loading results after the stricter v0.2.3 station filtering.
+- Prevented placeholder rows such as "Load station list" from behaving like selectable stations.
+
+### Changed
+
+- UK station list filtering now keeps stations with a real level measure and real unit, while the selected card still validates readings when it loads.
+- The UK reload button now reloads using the current filter text.
+
 ## 0.2.3
 
 ### Changed

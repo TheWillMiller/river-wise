@@ -330,14 +330,10 @@ class RiverWiseCard extends HTMLElement {
     const measure = this.pickEaMeasure(this.eaMeasures(station), "level");
     if (!measure) return false;
     const unitName = String(measure.unitName || "").trim();
-    const latestReading = measure.latestReading;
     return Boolean(
       measure["@id"]
       && unitName
       && unitName !== "---"
-      && latestReading
-      && typeof latestReading === "object"
-      && this.validNumber(latestReading.value) !== null
     );
   }
 
@@ -1037,14 +1033,10 @@ class RiverWiseCardEditor extends HTMLElement {
     const measure = this.pickEaMeasure(this.eaMeasures(station), "level");
     if (!measure) return false;
     const unitName = String(measure.unitName || "").trim();
-    const latestReading = measure.latestReading;
     return Boolean(
       measure["@id"]
       && unitName
       && unitName !== "---"
-      && latestReading
-      && typeof latestReading === "object"
-      && this.validNumber(latestReading.value) !== null
     );
   }
 
@@ -1168,7 +1160,7 @@ class RiverWiseCardEditor extends HTMLElement {
     this.render();
 
     try {
-      const response = await fetch(`https://environment.data.gov.uk/flood-monitoring/id/stations/${encodeURIComponent(id)}`, { mode: "cors" });
+      const response = await fetch(`https://environment.data.gov.uk/flood-monitoring/id/stations/${encodeURIComponent(id)}?_view=full`, { mode: "cors" });
       if (!response.ok) {
         throw new Error(`${response.status} ${response.statusText}`);
       }
@@ -1356,7 +1348,10 @@ class RiverWiseCardEditor extends HTMLElement {
 
     const ukReloadButton = this.shadowRoot.querySelector("#reload-uk-stations");
     if (ukReloadButton) {
-      ukReloadButton.addEventListener("click", () => this.loadUkStationOptions());
+      ukReloadButton.addEventListener("click", () => {
+        const input = this.shadowRoot.querySelector("#uk-station-filter");
+        this.loadUkStationOptions(input ? input.value : this.ukStationFilter);
+      });
     }
   }
 
@@ -1476,9 +1471,9 @@ class RiverWiseCardEditor extends HTMLElement {
     }
 
     if (!this.ukStationOptions.length) {
-      options.push(`<option value="${this.escape(selectedStation)}" selected>${this.ukStationLoading ? "Loading stations..." : "Load station list"}</option>`);
+      options.push(`<option value="" ${selectedStation ? "" : "selected"} disabled>${this.ukStationLoading ? "Loading stations..." : "Use Reload station list"}</option>`);
     } else if (!stations.length) {
-      options.push(`<option value="${this.escape(selectedStation)}" selected>No matching stations</option>`);
+      options.push(`<option value="" ${selectedStation ? "" : "selected"} disabled>No matching stations</option>`);
     }
 
     stations.forEach((station) => {
@@ -1568,6 +1563,7 @@ class RiverWiseCardEditor extends HTMLElement {
         config.title = selectedName;
       }
     } else if (key === "uk_station_select") {
+      if (!value) return;
       config.provider = "uk_ea";
       config.uk_station = String(value).trim();
       config.gauge = config.uk_station;
