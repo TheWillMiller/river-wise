@@ -3,7 +3,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/TheWillMiller/river-wise)](https://github.com/TheWillMiller/river-wise/releases)
 [![Validate](https://img.shields.io/github/actions/workflow/status/TheWillMiller/river-wise/validate.yml?branch=main&label=validate)](https://github.com/TheWillMiller/river-wise/actions/workflows/validate.yml)
 [![GitHub stars](https://img.shields.io/github/stars/TheWillMiller/river-wise?label=stars)](https://github.com/TheWillMiller/river-wise/stargazers)
-[![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=TheWillMiller&repository=river-wise&category=plugin)
+
 
 **Latest release:** `v0.2.6`
 
@@ -60,6 +60,8 @@ Helpful details include Home Assistant version, HACS version, RiverWise version,
 ## Installation
 
 ### Recommended: HACS Custom Repository
+
+[![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=TheWillMiller&repository=river-wise&category=plugin)
 
 RiverWise is not yet listed in the default/searchable HACS store. Until it is accepted into the default HACS list, install it as a custom HACS repository.
 
