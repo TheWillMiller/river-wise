@@ -4,7 +4,6 @@
 [![Validate](https://img.shields.io/github/actions/workflow/status/TheWillMiller/river-wise/validate.yml?branch=main&label=validate)](https://github.com/TheWillMiller/river-wise/actions/workflows/validate.yml)
 [![GitHub stars](https://img.shields.io/github/stars/TheWillMiller/river-wise?label=stars)](https://github.com/TheWillMiller/river-wise/stargazers)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-support-yellow?logo=buymeacoffee)](https://buymeacoffee.com/thewillmiller)
-[![Open RiverWise in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=TheWillMiller&repository=river-wise&category=plugin)
 
 **Latest release:** `v0.2.6`
 
