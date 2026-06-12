@@ -36,6 +36,8 @@ RiverWise needs real-world gauge testing. If it works for your setup, please con
 
 RiverWise has no telemetry, ads, popups, tracking pixels, or in-card donation prompts. If it helps your dashboard, you can [buy me a coffee](https://buymeacoffee.com/thewillmiller).
 
+Available for custom Home Assistant dashboards, Lovelace cards, and kiosk interfaces. I take 2-3 commissions/month, typically $300-600 depending on scope.
+
 If you run into issues or want to confirm your gauge works, please open one of these quick reports:
 
 - [Beta Install Report](https://github.com/TheWillMiller/river-wise/issues/new?template=beta-install-report.yml)
