@@ -3,7 +3,8 @@
 [![GitHub release](https://img.shields.io/github/v/release/TheWillMiller/river-wise)](https://github.com/TheWillMiller/river-wise/releases)
 [![Validate](https://img.shields.io/github/actions/workflow/status/TheWillMiller/river-wise/validate.yml?branch=main&label=validate)](https://github.com/TheWillMiller/river-wise/actions/workflows/validate.yml)
 [![GitHub stars](https://img.shields.io/github/stars/TheWillMiller/river-wise?label=stars)](https://github.com/TheWillMiller/river-wise/stargazers)
-
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-support-yellow?logo=buymeacoffee)](https://buymeacoffee.com/thewillmiller)
+[![Open RiverWise in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=TheWillMiller&repository=river-wise&category=plugin)
 
 **Latest release:** `v0.2.6`
 
@@ -34,6 +35,8 @@ RiverWise needs real-world gauge testing. If it works for your setup, please con
 
 [Star RiverWise on GitHub](https://github.com/TheWillMiller/river-wise)
 
+RiverWise has no telemetry, ads, popups, tracking pixels, or in-card donation prompts. If it helps your dashboard, you can [buy me a coffee](https://buymeacoffee.com/thewillmiller).
+
 If you run into issues or want to confirm your gauge works, please open one of these quick reports:
 
 - [Beta Install Report](https://github.com/TheWillMiller/river-wise/issues/new?template=beta-install-report.yml)
@@ -61,7 +64,7 @@ Helpful details include Home Assistant version, HACS version, RiverWise version,
 
 ### Recommended: HACS Custom Repository
 
-[![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=TheWillMiller&repository=river-wise&category=plugin)
+[![Open RiverWise in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=TheWillMiller&repository=river-wise&category=plugin)
 
 RiverWise is not yet listed in the default/searchable HACS store. Until it is accepted into the default HACS list, install it as a custom HACS repository.
 
