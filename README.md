@@ -5,7 +5,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/TheWillMiller/river-wise?label=stars)](https://github.com/TheWillMiller/river-wise/stargazers)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-support-yellow?logo=buymeacoffee)](https://buymeacoffee.com/thewillmiller)
 
-**Latest release:** `v0.2.6`
+**Latest release:** `v0.2.7`
 
 RiverWise is a Home Assistant dashboard (Lovelace) custom card for river, lake, reservoir, tailwater, and flood gauges.
 
@@ -119,7 +119,7 @@ type: module
 For quick testing before installing locally, you can add this dashboard resource:
 
 ```yaml
-url: https://cdn.jsdelivr.net/gh/TheWillMiller/river-wise@v0.2.6/river-wise-card.js
+url: https://cdn.jsdelivr.net/gh/TheWillMiller/river-wise@v0.2.7/river-wise-card.js
 type: module
 ```
 
@@ -285,7 +285,7 @@ Try:
 5. Choose the latest version.
 6. Hard-refresh your browser.
 
-If HACS shows a short value like `214b6c2` instead of `v0.2.6`, that is a GitHub commit hash. HACS shows commit hashes when a repository has tags but no full GitHub Release yet. Publishing a full GitHub Release makes HACS show the release version instead.
+If HACS shows a short value like `214b6c2` instead of `v0.2.7`, that is a GitHub commit hash. HACS shows commit hashes when a repository has tags but no full GitHub Release yet. Publishing a full GitHub Release makes HACS show the release version instead.
 
 ### Gauge data unavailable
 

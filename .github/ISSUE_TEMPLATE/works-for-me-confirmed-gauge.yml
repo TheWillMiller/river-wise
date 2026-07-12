@@ -9,7 +9,7 @@ body:
     id: riverwise_version
     attributes:
       label: RiverWise version
-      placeholder: v0.2.6
+      placeholder: v0.2.7
     validations:
       required: true
   - type: input

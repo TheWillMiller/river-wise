@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.7
+
 ### Changed
 
 - Switched RiverWise to the MIT License so GitHub and HACS can recognize the repository license cleanly.
