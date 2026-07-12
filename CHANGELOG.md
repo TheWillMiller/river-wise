@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+
+- Switched RiverWise to the MIT License so GitHub and HACS can recognize the repository license cleanly.
+- Added HACS country metadata for US and GB provider coverage.
+
 ## 0.2.6
 
 ### Added

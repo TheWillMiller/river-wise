@@ -27,6 +27,7 @@ TheWillMiller/river-wise
 - GitHub topics are set.
 - `hacs.json` exists in the repository root.
 - `hacs.json` points to `river-wise-card.js`.
+- `hacs.json` includes `country` metadata for the currently supported US and UK providers.
 - `river-wise-card.js` exists in the repository root.
 - HACS validation workflow passes with `category: plugin`.
 - Frontend syntax check workflow passes.
@@ -38,4 +39,4 @@ TheWillMiller/river-wise
 
 Do not submit RiverWise as a Home Assistant integration. It is a plugin/custom card.
 
-Do not change the license silently. RiverWise is licensed for free personal/non-commercial use under PolyForm Noncommercial 1.0.0, with commercial use requiring separate written permission.
+RiverWise is licensed under the MIT License.

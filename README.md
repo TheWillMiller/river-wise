@@ -354,9 +354,7 @@ Do not use RiverWise as your only source for flood risk, evacuation, boating, or
 
 ## License
 
-Free for personal and non-commercial use under PolyForm Noncommercial License 1.0.0.
-
-Commercial use requires separate written permission.
+RiverWise is licensed under the MIT License.
 
 ## Development
 
