@@ -1,0 +1,11 @@
+type: custom:river-wise-card
+title: Köln - Rhein
+provider: de_pegelonline
+gauge: a6ee8177-107b-47dd-bcfd-30960ccc6e9c
+de_station: a6ee8177-107b-47dd-bcfd-30960ccc6e9c
+units: metric
+show_forecast: false
+show_impacts: false
+grid_options:
+  rows: full
+  columns: 18

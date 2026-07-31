@@ -5,7 +5,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/TheWillMiller/river-wise?label=stars)](https://github.com/TheWillMiller/river-wise/stargazers)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-support-yellow?logo=buymeacoffee)](https://buymeacoffee.com/thewillmiller)
 
-**Latest release:** `v0.2.8`
+**Latest release:** `v0.2.9`
 
 RiverWise is a Home Assistant dashboard (Lovelace) custom card for river, lake, reservoir, tailwater, and flood gauges.
 
@@ -15,6 +15,7 @@ RiverWise currently supports:
 
 - US NOAA/NWS National Water Prediction Service (NWPS)
 - UK Environment Agency flood-monitoring stations for England
+- Germany PEGELONLINE stations on federal waterways
 
 > **Beta notice:** RiverWise is early beta software. Please expect occasional provider-specific quirks, missing-data fallbacks, and gauge-specific layout issues while testing.
 
@@ -58,6 +59,7 @@ Helpful details include Home Assistant version, HACS version, RiverWise version,
 - US state and gauge selector
 - Manual US NWPS gauge code lookup
 - UK Environment Agency station search and station lookup
+- Germany PEGELONLINE station search and lookup by UUID, station number, or short name
 - Home Assistant theme-aware styling
 - Hidden YAML-only debug output for troubleshooting
 
@@ -119,7 +121,7 @@ type: module
 For quick testing before installing locally, you can add this dashboard resource:
 
 ```yaml
-url: https://cdn.jsdelivr.net/gh/TheWillMiller/river-wise@v0.2.8/river-wise-card.js
+url: https://cdn.jsdelivr.net/gh/TheWillMiller/river-wise@v0.2.9/river-wise-card.js
 type: module
 ```
 
@@ -159,6 +161,22 @@ grid_options:
   columns: 18
 ```
 
+## Germany Example
+
+```yaml
+type: custom:river-wise-card
+title: Köln - Rhein
+provider: de_pegelonline
+gauge: a6ee8177-107b-47dd-bcfd-30960ccc6e9c
+de_station: a6ee8177-107b-47dd-bcfd-30960ccc6e9c
+units: metric
+show_forecast: false
+show_impacts: false
+grid_options:
+  rows: full
+  columns: 18
+```
+
 ## Dashboard Size
 
 RiverWise is a chart card. In Home Assistant section/grid dashboards, give it enough horizontal space:
@@ -181,10 +199,11 @@ grid_options:
 
 RiverWise includes a Home Assistant visual editor. When adding the card from the dashboard editor, you can:
 
-- Choose US NOAA/NWS NWPS or UK Environment Agency
+- Choose US NOAA/NWS NWPS, UK Environment Agency, or Germany PEGELONLINE
 - Select a US state and gauge
 - Search UK Environment Agency stations
-- Enter a custom US gauge code or UK station reference
+- Search German stations by gauge, waterway, station number, or UUID
+- Enter a custom US gauge code, UK station reference, or PEGELONLINE identifier
 - Set English or metric units
 - Enable or disable forecast rendering
 - Enable or disable flood impact rendering
@@ -192,6 +211,8 @@ RiverWise includes a Home Assistant visual editor. When adding the card from the
 US state gauge lists are loaded from the NWPS API using state bounding boxes. If your gauge is not in the dropdown, enter the NWPS gauge code manually and use **Look up code**.
 
 UK station search uses the Environment Agency flood-monitoring API. Enter a place, river name, or station reference, then choose a result.
+
+Germany station search loads the public PEGELONLINE federal-waterway station list and filters it locally. Choose a station from the list or enter its UUID, public station number, or short name.
 
 ## Data Providers
 
@@ -225,13 +246,27 @@ https://environment.data.gov.uk/flood-monitoring/id/measures/{id}/readings
 
 UK data uses Environment Agency flood and river level data from the real-time flood-monitoring API.
 
+### Germany PEGELONLINE
+
+For Germany, RiverWise uses the official PEGELONLINE REST API from the Federal Waterways and Shipping Administration:
+
+```text
+https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations.json
+https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/{id}.json
+https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/{id}/W/measurements.json
+```
+
+RiverWise displays the current water level (`W`), seven days of observed history, and current discharge (`Q`) when the station exposes it. Source measurements normally use centimeters and cubic metres per second. PEGELONLINE data is provided under DL-DE-Zero-2.0.
+
 ## Provider Limitations
 
 Forecast data is not available for every US NWPS gauge. RiverWise will still render observed data when forecast data is missing.
 
 UK Environment Agency support currently renders observed readings only. The EA real-time API exposes station and measure readings, but not the same NWPS-style forecast crest feed.
 
-Flood impact text is provider-specific. NWPS may provide gauge-specific flood impacts. UK Environment Agency station readings usually do not include NWPS-style impact statements.
+PEGELONLINE support currently renders observed readings only. Coverage is limited to stations published for Germany's federal waterways; the broader Hochwasserzentralen portal also links state-level flood services that do not share one unified API.
+
+Flood impact text is provider-specific. NWPS may provide gauge-specific flood impacts. UK Environment Agency and PEGELONLINE readings do not include NWPS-style impact statements.
 
 ## Hidden Debug Panel
 
@@ -251,10 +286,11 @@ Debug output is logged to the browser console and stored on the card element as 
 | --- | --- | --- | --- |
 | `type` | Yes |  | Use `custom:river-wise-card`. |
 | `title` | No | `RiverWise` | Card title. If a gauge lookup succeeds, the visual editor can update this from provider metadata. |
-| `provider` | No | `us_nwps` | Data provider. Use `us_nwps` or `uk_ea`. |
-| `gauge` | Yes |  | US NWPS gauge ID or UK station reference. |
+| `provider` | No | `us_nwps` | Data provider. Use `us_nwps`, `uk_ea`, or `de_pegelonline`. |
+| `gauge` | Yes |  | US NWPS gauge ID, UK station reference, or PEGELONLINE station identifier. |
 | `gauge_state` | No |  | US state abbreviation used by the visual editor gauge dropdown. |
 | `uk_station` | No |  | UK Environment Agency station reference. Usually the same value as `gauge` in UK mode. |
+| `de_station` | No |  | PEGELONLINE UUID, station number, or short name. Usually the same value as `gauge` in Germany mode. |
 | `units` | No | `english` | Display units. Use `english` or `metric`. Provider data availability may vary. |
 | `show_forecast` | No | `true` | Show forecast hydrograph when available. US NWPS only for now. |
 | `show_impacts` | No | `true` | Show flood impact statements when provider metadata includes them. |
@@ -285,13 +321,13 @@ Try:
 5. Choose the latest version.
 6. Hard-refresh your browser.
 
-If HACS shows a short value like `214b6c2` instead of `v0.2.8`, that is a GitHub commit hash. HACS shows commit hashes when a repository has tags but no full GitHub Release yet. Publishing a full GitHub Release makes HACS show the release version instead.
+If HACS shows a short value like `214b6c2` instead of `v0.2.9`, that is a GitHub commit hash. HACS shows commit hashes when a repository has tags but no full GitHub Release yet. Publishing a full GitHub Release makes HACS show the release version instead.
 
 ### Gauge data unavailable
 
 1. Verify the provider.
 2. Verify the gauge or station code.
-3. Try a known working gauge such as `MELO1` for US NWPS.
+3. Try a known working gauge such as `MELO1` for US NWPS or `2730010` for PEGELONLINE Köln.
 4. Confirm your browser/Home Assistant can reach the provider API.
 5. Open the browser console and check for network, CORS, or station errors.
 
@@ -366,10 +402,11 @@ river-wise-card.js
 
 For HACS default repository submission, RiverWise is a dashboard/custom card. HACS validation/submission uses the `plugin` category internally for dashboard plugins.
 
-Run the local syntax check before opening a pull request:
+Run the local validation before opening a pull request:
 
 ```bash
 npm run check
+npm test
 ```
 
 ## Roadmap
@@ -377,7 +414,7 @@ npm run check
 Planned areas for future releases:
 
 - More provider-specific polish for UK Environment Agency data
-- Better international provider discovery
+- Additional German state-level providers beyond federal-waterway PEGELONLINE coverage
 - More complete gauge search and filtering
 - Additional theme and mobile layout polish
 - Optional threshold/alert customization for gauges without published flood stages

@@ -20,4 +20,7 @@ jobs:
           node-version: "20"
 
       - name: JavaScript syntax check
-        run: node --check river-wise-card.js
+        run: npm run check
+
+      - name: Provider behavior tests
+        run: npm test

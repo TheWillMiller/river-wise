@@ -27,10 +27,10 @@ TheWillMiller/river-wise
 - GitHub topics are set.
 - `hacs.json` exists in the repository root.
 - `hacs.json` points to `river-wise-card.js`.
-- `hacs.json` includes `country` metadata for the currently supported US and UK providers.
+- `hacs.json` includes `country` metadata for the currently supported US, UK, and Germany providers.
 - `river-wise-card.js` exists in the repository root.
 - HACS validation workflow passes with `category: plugin`.
-- Frontend syntax check workflow passes.
+- Frontend syntax and provider behavior workflow passes.
 - Latest version is a full GitHub Release, not only a tag.
 - Latest release includes `river-wise-card.js` as an attached asset.
 - README includes screenshots, installation steps, troubleshooting, safety notes, privacy notes, and license summary.

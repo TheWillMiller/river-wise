@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.9
+
+### Added
+
+- Added Germany PEGELONLINE as a native provider for federal-waterway gauges.
+- Added visual-editor station loading, local filtering, selection, and manual lookup by UUID, station number, or short name.
+- Added current water level, optional discharge, official water-state labels, and a bounded seven-day observed hydrograph.
+- Added provider regression tests and Germany example YAML.
+
+### Changed
+
+- Added Germany to HACS country metadata and updated the frontend workflow to run provider tests.
+- Made hydrograph threshold labels use the provider's actual stage unit instead of always displaying feet.
+
+### Notes
+
+- PEGELONLINE does not provide an NWPS-style forecast series, so Germany cards render observed data only.
+- Initial Germany coverage is limited to stations published by PEGELONLINE on federal waterways.
+
 ## 0.2.8
 
 ### Changed

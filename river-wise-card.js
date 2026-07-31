@@ -106,6 +106,8 @@ const RIVER_WISE_STATE_NAMES = {
   WY: "Wyoming",
 };
 
+const RIVER_WISE_PEGELONLINE_BASE = "https://www.pegelonline.wsv.de/webservices/rest-api/v2";
+
 class RiverWiseCard extends HTMLElement {
   setConfig(config) {
     if (!config || !config.gauge) {
@@ -114,6 +116,7 @@ class RiverWiseCard extends HTMLElement {
 
     this.config = {
       provider: "us_nwps",
+      de_station: "",
       title: "RiverWise",
       units: "english",
       show_forecast: true,
@@ -174,6 +177,11 @@ class RiverWiseCard extends HTMLElement {
     try {
       if (this.config.provider === "uk_ea") {
         const model = await this.loadUkEa(debug);
+        this.render(model);
+        return;
+      }
+      if (this.config.provider === "de_pegelonline") {
+        const model = await this.loadDePegelonline(debug);
         this.render(model);
         return;
       }
@@ -291,6 +299,131 @@ class RiverWiseCard extends HTMLElement {
       riverName: station.riverName || "",
       typicalRangeHigh: typicalHigh,
     };
+  }
+
+  async loadDePegelonline(debug) {
+    const stationId = String(this.config.de_station || this.config.gauge || "").trim();
+    if (!stationId) {
+      throw new Error("RiverWise Germany provider requires a PEGELONLINE station");
+    }
+
+    const stationUrl = `${RIVER_WISE_PEGELONLINE_BASE}/stations/${encodeURIComponent(stationId)}.json?includeTimeseries=true&includeCurrentMeasurement=true&includeCharacteristicValues=true`;
+    const measurementsUrl = `${RIVER_WISE_PEGELONLINE_BASE}/stations/${encodeURIComponent(stationId)}/W/measurements.json?start=P7D`;
+    debug.endpoint = stationUrl;
+
+    const [station, measurements] = await Promise.all([
+      this.fetchJson(stationUrl),
+      this.fetchJson(measurementsUrl),
+    ]);
+    const waterLevel = this.pickDeTimeseries(station && station.timeseries, "W");
+    if (!waterLevel) {
+      throw new Error(`No PEGELONLINE water-level timeseries found for ${stationId}`);
+    }
+
+    const discharge = this.pickDeTimeseries(station && station.timeseries, "Q");
+    const observedPoints = this.normalizeDeMeasurements(measurements);
+    const latestPoint = observedPoints.length ? observedPoints[observedPoints.length - 1] : null;
+    const previousPoint = observedPoints.length > 4
+      ? observedPoints[observedPoints.length - 5]
+      : observedPoints.length > 1
+        ? observedPoints[observedPoints.length - 2]
+        : null;
+    const current = waterLevel.currentMeasurement || null;
+    const currentStage = this.validNumber(current && current.value) !== null
+      ? this.validNumber(current.value)
+      : latestPoint
+        ? latestPoint.stage
+        : null;
+    const updated = current && current.timestamp
+      ? current.timestamp
+      : latestPoint
+        ? latestPoint.time.toISOString()
+        : null;
+
+    debug.gaugeMetadataReceived = Boolean(station && station.uuid);
+    debug.observedDataCount = observedPoints.length;
+    debug.forecastDataCount = 0;
+    debug.floodThresholds = {};
+    debug.lastUpdateTime = updated;
+    debug.fallbackBehavior.push("PEGELONLINE currently renders observed readings only; a forecast series is not provided by this API.");
+    if (!observedPoints.length) debug.missingFields.push("measurements");
+    if (currentStage === null) debug.missingFields.push("timeseries.W.currentMeasurement.value");
+
+    return {
+      provider: "de_pegelonline",
+      metadata: station,
+      observed: measurements,
+      forecast: null,
+      debug,
+      name: station.longname || station.shortname || this.config.title || stationId,
+      id: station.number || station.uuid || stationId,
+      stage: currentStage,
+      stageUnit: waterLevel.unit || "cm",
+      flow: this.validNumber(discharge && discharge.currentMeasurement && discharge.currentMeasurement.value),
+      flowUnit: discharge && discharge.unit ? discharge.unit : "",
+      updated,
+      trend: this.trend(latestPoint, previousPoint),
+      category: this.deWaterCategory(current),
+      thresholds: {},
+      floodStage: null,
+      observedPoints,
+      forecastPoints: [],
+      crest: null,
+      impacts: [],
+      attribution: "Water-level data: Wasserstraßen- und Schifffahrtsverwaltung des Bundes (WSV), PEGELONLINE.",
+      riverName: station.water && (station.water.longname || station.water.shortname) || "",
+      deWaterState: this.deWaterStateLabel(current),
+    };
+  }
+
+  deTimeseries(timeseries) {
+    if (Array.isArray(timeseries)) return timeseries;
+    if (timeseries && typeof timeseries === "object") return [timeseries];
+    return [];
+  }
+
+  pickDeTimeseries(timeseries, shortname) {
+    const target = String(shortname || "").toUpperCase();
+    return this.deTimeseries(timeseries).find((series) => String(series && series.shortname || "").toUpperCase() === target) || null;
+  }
+
+  normalizeDeMeasurements(items, limit = 288) {
+    if (!Array.isArray(items)) return [];
+    const points = items
+      .map((item) => ({
+        time: new Date(item.timestamp),
+        stage: this.validNumber(item.value),
+        flow: null,
+        generatedTime: item.timestamp,
+      }))
+      .filter((point) => point.stage !== null && !Number.isNaN(point.time.getTime()))
+      .sort((a, b) => a.time - b.time);
+
+    if (points.length <= limit) return points;
+    const sampled = [];
+    const lastIndex = points.length - 1;
+    for (let index = 0; index < limit; index += 1) {
+      const point = points[Math.round((index * lastIndex) / (limit - 1))];
+      if (!sampled.length || sampled[sampled.length - 1] !== point) sampled.push(point);
+    }
+    return sampled;
+  }
+
+  deWaterStateLabel(measurement) {
+    const navigationState = String(measurement && measurement.stateNswHsw || "").toLowerCase();
+    const hydrologyState = String(measurement && measurement.stateMnwMhw || "").toLowerCase();
+    if (navigationState === "high" || hydrologyState === "high") return "high water";
+    if (navigationState === "low" || hydrologyState === "low") return "low water";
+    if (navigationState === "normal" || hydrologyState === "normal") return "normal";
+    return "unknown";
+  }
+
+  deWaterCategory(measurement) {
+    const state = this.deWaterStateLabel(measurement);
+    if (state === "high water") return "High Water";
+    if (state === "low water") return "Low Water";
+    if (state === "normal") return "Normal";
+    return "Unknown";
   }
 
   httpsUrl(url) {
@@ -476,6 +609,12 @@ class RiverWiseCard extends HTMLElement {
         : "";
       return `Latest Environment Agency reading is ${this.formatNumber(model.stage, 2)} ${model.stageUnit} and ${trend}.${typical}`;
     }
+    if (model.provider === "de_pegelonline") {
+      const trend = model.trend && model.trend.label ? model.trend.label : "steady";
+      const river = model.riverName ? ` on the ${model.riverName}` : "";
+      const state = model.deWaterState && model.deWaterState !== "unknown" ? ` Official water state: ${model.deWaterState}.` : "";
+      return `Latest PEGELONLINE reading${river} is ${this.formatNumber(model.stage, 2)} ${model.stageUnit} and ${trend}.${state}`;
+    }
 
     if (!model.crest) {
       return "Forecast data is not available for this gauge.";
@@ -612,6 +751,16 @@ class RiverWiseCard extends HTMLElement {
         .pill.major {
           background: color-mix(in srgb, var(--river-wise-major) 18%, transparent);
           color: var(--river-wise-major);
+        }
+
+        .pill.high-water {
+          background: color-mix(in srgb, var(--river-wise-minor) 20%, transparent);
+          color: var(--river-wise-minor);
+        }
+
+        .pill.low-water {
+          background: color-mix(in srgb, var(--river-wise-forecast) 16%, transparent);
+          color: var(--river-wise-forecast);
         }
 
         .stats {
@@ -754,7 +903,7 @@ class RiverWiseCard extends HTMLElement {
       console.debug("RiverWise debug", model.debug);
     }
 
-    const categoryClass = model.category.toLowerCase().replace(" flood", "");
+    const categoryClass = model.category.toLowerCase().replace(" flood", "").replace(/\s+/g, "-");
     const flowText = model.flow === null
       ? "Unavailable"
       : `${this.formatNumber(model.flow, 0)} ${model.flowUnit}`;
@@ -849,7 +998,7 @@ class RiverWiseCard extends HTMLElement {
     };
     const thresholdLabel = (item) => {
       const suffix = item.stage > maxStage ? " above view" : item.stage < minStage ? " below view" : "";
-      return `${item.key} ${this.formatNumber(item.stage, 0)} ft${suffix}`;
+      return `${item.key} ${this.formatNumber(item.stage, 0)} ${model.stageUnit}${suffix}`;
     };
     const renderedThresholds = thresholds
       .map((item) => ({
@@ -962,6 +1111,8 @@ class RiverWiseCardEditor extends HTMLElement {
       gauge_state: "OH",
       uk_station: "",
       uk_search: "",
+      de_station: "",
+      de_search: "",
       units: "english",
       show_forecast: true,
       show_impacts: true,
@@ -983,12 +1134,20 @@ class RiverWiseCardEditor extends HTMLElement {
     if (typeof this.ukStationError !== "string") this.ukStationError = "";
     if (typeof this.ukStationFilter !== "string") this.ukStationFilter = this.config.uk_search || "";
     if (typeof this.ukStationLoadedOnce !== "boolean") this.ukStationLoadedOnce = false;
+    if (!Array.isArray(this.deStationOptions)) this.deStationOptions = [];
+    if (typeof this.deStationLoading !== "boolean") this.deStationLoading = false;
+    if (typeof this.deStationError !== "string") this.deStationError = "";
+    if (typeof this.deStationFilter !== "string") this.deStationFilter = this.config.de_search || "";
+    if (typeof this.deStationLoadedOnce !== "boolean") this.deStationLoadedOnce = false;
     this.render();
     if (this.config.gauge_state && this.lastStateLoaded !== this.config.gauge_state && !this.stateGaugeLoading) {
       this.loadStateGaugeOptions(this.config.gauge_state);
     }
     if (this.config.provider === "uk_ea" && !this.ukStationLoadedOnce && !this.ukStationLoading) {
       this.loadUkStationOptions();
+    }
+    if (this.config.provider === "de_pegelonline" && !this.deStationLoadedOnce && !this.deStationLoading) {
+      this.loadDeStationOptions();
     }
   }
 
@@ -1129,6 +1288,61 @@ class RiverWiseCardEditor extends HTMLElement {
     this.updateUkStationDropdown();
   }
 
+  deTimeseries(station) {
+    const timeseries = station && station.timeseries;
+    if (Array.isArray(timeseries)) return timeseries;
+    if (timeseries && typeof timeseries === "object") return [timeseries];
+    return [];
+  }
+
+  hasUsableDeWaterLevel(station) {
+    return this.deTimeseries(station).some((series) => (
+      String(series && series.shortname || "").toUpperCase() === "W"
+      && series.unit
+    ));
+  }
+
+  deStationName(station) {
+    const name = station && (station.longname || station.shortname) || "";
+    const water = station && station.water && (station.water.longname || station.water.shortname) || "";
+    return water && !name.toUpperCase().includes(water.toUpperCase()) ? `${name} - ${water}` : name;
+  }
+
+  async loadDeStationOptions() {
+    this.deStationLoading = true;
+    this.deStationError = "";
+    this.render();
+
+    try {
+      const url = `${RIVER_WISE_PEGELONLINE_BASE}/stations.json?includeTimeseries=true&includeCurrentMeasurement=true`;
+      const response = await fetch(url, { mode: "cors" });
+      if (!response.ok) {
+        throw new Error(`${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      this.deStationOptions = (Array.isArray(data) ? data : [])
+        .filter((station) => station && station.uuid && (station.longname || station.shortname) && this.hasUsableDeWaterLevel(station))
+        .sort((a, b) => this.deStationName(a).localeCompare(this.deStationName(b), "de"));
+      this.deStationLoadedOnce = true;
+    } catch (error) {
+      this.deStationOptions = [];
+      this.deStationError = error.message;
+    } finally {
+      this.deStationLoading = false;
+      this.render();
+    }
+  }
+
+  async searchDeStations(query) {
+    this.deStationFilter = String(query || "").trim();
+    if (!this.deStationLoadedOnce || !this.deStationOptions.length) {
+      await this.loadDeStationOptions();
+      return;
+    }
+    this.updateDeStationDropdown();
+  }
+
   async lookupGaugeName(gaugeId) {
     const id = String(gaugeId || "").trim().toUpperCase();
     if (!id) return;
@@ -1192,6 +1406,44 @@ class RiverWiseCardEditor extends HTMLElement {
           title: this.lookupName,
         }, false);
       }
+    } catch (error) {
+      this.lookupError = error.message;
+    } finally {
+      this.lookupLoading = false;
+      this.render();
+    }
+  }
+
+  async lookupDeStationName(stationId) {
+    const id = String(stationId || "").trim();
+    if (!id) return;
+
+    this.lookupLoading = true;
+    this.lookupError = "";
+    this.lookupName = "";
+    this.render();
+
+    try {
+      const url = `${RIVER_WISE_PEGELONLINE_BASE}/stations/${encodeURIComponent(id)}.json?includeTimeseries=true&includeCurrentMeasurement=true`;
+      const response = await fetch(url, { mode: "cors" });
+      if (!response.ok) {
+        throw new Error(`${response.status} ${response.statusText}`);
+      }
+
+      const station = await response.json();
+      if (!this.hasUsableDeWaterLevel(station)) {
+        throw new Error("Station has no PEGELONLINE water-level timeseries");
+      }
+      this.lookupName = this.deStationName(station);
+      const resolvedId = station.uuid || id;
+      this.commitConfig({
+        ...this.config,
+        provider: "de_pegelonline",
+        de_station: resolvedId,
+        gauge: resolvedId,
+        title: this.lookupName || this.config.title,
+        units: "metric",
+      }, false);
     } catch (error) {
       this.lookupError = error.message;
     } finally {
@@ -1295,12 +1547,13 @@ class RiverWiseCardEditor extends HTMLElement {
         <div class="row">
           <label for="provider">Data source</label>
           <select id="provider" data-key="provider">
-            <option value="us_nwps" ${this.config.provider !== "uk_ea" ? "selected" : ""}>US NOAA/NWS NWPS</option>
+            <option value="us_nwps" ${this.config.provider === "us_nwps" ? "selected" : ""}>US NOAA/NWS NWPS</option>
             <option value="uk_ea" ${this.config.provider === "uk_ea" ? "selected" : ""}>UK Environment Agency</option>
+            <option value="de_pegelonline" ${this.config.provider === "de_pegelonline" ? "selected" : ""}>Germany PEGELONLINE</option>
           </select>
         </div>
 
-        ${this.config.provider === "uk_ea" ? this.renderUkEditor() : this.renderUsEditor()}
+        ${this.config.provider === "uk_ea" ? this.renderUkEditor() : this.config.provider === "de_pegelonline" ? this.renderDeEditor() : this.renderUsEditor()}
 
         <div class="row">
           <label for="units">Units</label>
@@ -1333,6 +1586,8 @@ class RiverWiseCardEditor extends HTMLElement {
       lookupButton.addEventListener("click", () => {
         if (this.config.provider === "uk_ea") {
           this.lookupUkStationName(this.config.uk_station || this.config.gauge);
+        } else if (this.config.provider === "de_pegelonline") {
+          this.lookupDeStationName(this.config.de_station || this.config.gauge);
         } else {
           this.lookupGaugeName(this.config.gauge);
         }
@@ -1372,6 +1627,38 @@ class RiverWiseCardEditor extends HTMLElement {
     const ukUseButton = this.shadowRoot.querySelector("#use-uk-station");
     if (ukUseButton) {
       ukUseButton.addEventListener("click", () => this.useSelectedUkStation());
+    }
+
+    const deFilterInput = this.shadowRoot.querySelector("#de-station-filter");
+    if (deFilterInput) {
+      deFilterInput.addEventListener("input", (event) => {
+        this.deStationFilter = event.currentTarget.value;
+        this.updateDeStationDropdown();
+      });
+      deFilterInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          this.searchDeStations(event.currentTarget.value);
+        }
+      });
+    }
+
+    const deSearchButton = this.shadowRoot.querySelector("#search-de-stations");
+    if (deSearchButton) {
+      deSearchButton.addEventListener("click", () => {
+        const input = this.shadowRoot.querySelector("#de-station-filter");
+        this.searchDeStations(input ? input.value : this.deStationFilter);
+      });
+    }
+
+    const deReloadButton = this.shadowRoot.querySelector("#reload-de-stations");
+    if (deReloadButton) {
+      deReloadButton.addEventListener("click", () => this.loadDeStationOptions());
+    }
+
+    const deUseButton = this.shadowRoot.querySelector("#use-de-station");
+    if (deUseButton) {
+      deUseButton.addEventListener("click", () => this.useSelectedDeStation());
     }
   }
 
@@ -1437,6 +1724,41 @@ class RiverWiseCardEditor extends HTMLElement {
         <button type="button" id="lookup-gauge" ${this.lookupLoading ? "disabled" : ""}>${this.lookupLoading ? "Looking up..." : "Look up station"}</button>
         <div class="hint-block">
           Optional: paste a known Environment Agency station reference.
+          ${this.lookupName ? `<br>Found: ${this.escape(this.lookupName)}` : ""}
+          ${this.lookupError ? `<br><span class="error">Station lookup failed: ${this.escape(this.lookupError)}</span>` : ""}
+        </div>
+      </div>
+    `;
+  }
+
+  renderDeEditor() {
+    return `
+      <div class="row">
+        <label for="de-station-filter">Filter German stations</label>
+        <input id="de-station-filter" value="${this.escape(this.deStationFilter || "")}" placeholder="Köln, Rhein, Hamburg, 2730010">
+        <button type="button" id="search-de-stations" ${this.deStationLoading ? "disabled" : ""}>Apply filter</button>
+        <button type="button" id="reload-de-stations" ${this.deStationLoading ? "disabled" : ""}>${this.deStationLoading ? "Loading..." : "Reload station list"}</button>
+        <div class="hint-block">Loads federal-waterway gauges from PEGELONLINE, then filters by station, waterway, station number, or UUID.</div>
+      </div>
+
+      <div class="row">
+        <label for="de-station-select">Station</label>
+        <select id="de-station-select" data-key="de_station_select" ${this.deStationLoading ? "disabled" : ""}>
+          ${this.renderDeStationOptions()}
+        </select>
+        <button type="button" id="use-de-station" ${this.deStationLoading || !this.filteredDeStationOptions().length ? "disabled" : ""}>Use selected station</button>
+        <div id="de-station-count" class="hint-block">
+          ${this.renderDeStationCountText()}
+          ${this.deStationError ? `<br><span class="error">Station load failed: ${this.escape(this.deStationError)}</span>` : ""}
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="de-station">Manual station identifier</label>
+        <input id="de-station" data-key="de_station" value="${this.escape(this.config.de_station || this.config.gauge || "")}" placeholder="Station UUID or number">
+        <button type="button" id="lookup-gauge" ${this.lookupLoading ? "disabled" : ""}>${this.lookupLoading ? "Looking up..." : "Look up station"}</button>
+        <div class="hint-block">
+          Optional: paste a PEGELONLINE station UUID, station number, or short name. Germany readings use the source unit, normally centimeters.
           ${this.lookupName ? `<br>Found: ${this.escape(this.lookupName)}` : ""}
           ${this.lookupError ? `<br><span class="error">Station lookup failed: ${this.escape(this.lookupError)}</span>` : ""}
         </div>
@@ -1512,6 +1834,36 @@ class RiverWiseCardEditor extends HTMLElement {
     return options.join("");
   }
 
+  renderDeStationOptions() {
+    const selectedStation = String(this.config.de_station || this.config.gauge || "");
+    const stations = this.filteredDeStationOptions();
+    const hasSelected = this.deStationOptions.some((station) => String(station.uuid) === selectedStation);
+    const options = [];
+
+    if (!hasSelected && selectedStation) {
+      options.push(`<option value="${this.escape(selectedStation)}" ${stations.length ? "" : "selected"}>${this.escape(selectedStation)} - current station</option>`);
+    }
+
+    if (!this.deStationOptions.length) {
+      options.push(`<option value="" ${selectedStation ? "" : "selected"} disabled>${this.deStationLoading ? "Loading stations..." : "Use Reload station list"}</option>`);
+    } else if (!stations.length) {
+      options.push(`<option value="" ${selectedStation ? "" : "selected"} disabled>No matching stations</option>`);
+    }
+
+    stations.forEach((station) => {
+      const id = String(station.uuid);
+      const selected = id === selectedStation ? "selected" : "";
+      const name = this.deStationName(station);
+      options.push(`
+        <option value="${this.escape(id)}" data-name="${this.escape(name)}" ${selected}>
+          ${this.escape(name)} (${this.escape(station.number || id)})
+        </option>
+      `);
+    });
+
+    return options.join("");
+  }
+
   filteredUkStationOptions() {
     const filter = String(this.ukStationFilter || "").trim().toLowerCase();
     if (!filter) return this.ukStationOptions;
@@ -1527,6 +1879,22 @@ class RiverWiseCardEditor extends HTMLElement {
     });
   }
 
+  filteredDeStationOptions() {
+    const filter = String(this.deStationFilter || "").trim().toLocaleLowerCase("de");
+    if (!filter) return this.deStationOptions;
+    return this.deStationOptions.filter((station) => {
+      const haystack = [
+        station.shortname,
+        station.longname,
+        station.number,
+        station.uuid,
+        station.water && station.water.shortname,
+        station.water && station.water.longname,
+      ].filter(Boolean).join(" ").toLocaleLowerCase("de");
+      return haystack.includes(filter);
+    });
+  }
+
   renderUkStationCountText() {
     if (this.ukStationLoading) return "Loading UK Environment Agency stations...";
     if (!this.ukStationOptions.length) return "Load the UK Environment Agency station list, then choose a station.";
@@ -1536,6 +1904,17 @@ class RiverWiseCardEditor extends HTMLElement {
       return `${filteredCount} matching stations from ${this.ukStationOptions.length} loaded.`;
     }
     return `${this.ukStationOptions.length} stations loaded.`;
+  }
+
+  renderDeStationCountText() {
+    if (this.deStationLoading) return "Loading PEGELONLINE water-level stations...";
+    if (!this.deStationOptions.length) return "Load the PEGELONLINE station list, then choose a station.";
+    const filteredCount = this.filteredDeStationOptions().length;
+    const filter = String(this.deStationFilter || "").trim();
+    if (filter) {
+      return `${filteredCount} matching stations from ${this.deStationOptions.length} loaded.`;
+    }
+    return `${this.deStationOptions.length} water-level stations loaded.`;
   }
 
   updateUkStationDropdown() {
@@ -1556,6 +1935,20 @@ class RiverWiseCardEditor extends HTMLElement {
     }
   }
 
+  updateDeStationDropdown() {
+    const select = this.shadowRoot && this.shadowRoot.querySelector("#de-station-select");
+    const count = this.shadowRoot && this.shadowRoot.querySelector("#de-station-count");
+    const useButton = this.shadowRoot && this.shadowRoot.querySelector("#use-de-station");
+    if (select) select.innerHTML = this.renderDeStationOptions();
+    if (useButton) useButton.disabled = this.deStationLoading || !this.filteredDeStationOptions().length;
+    if (count) {
+      count.innerHTML = `
+        ${this.renderDeStationCountText()}
+        ${this.deStationError ? `<br><span class="error">Station load failed: ${this.escape(this.deStationError)}</span>` : ""}
+      `;
+    }
+  }
+
   useSelectedUkStation() {
     const select = this.shadowRoot && this.shadowRoot.querySelector("#uk-station-select");
     const value = select ? String(select.value || "").trim() : "";
@@ -1569,6 +1962,23 @@ class RiverWiseCardEditor extends HTMLElement {
       uk_station: value,
       gauge: value,
       title: selectedName || this.config.title,
+    });
+  }
+
+  useSelectedDeStation() {
+    const select = this.shadowRoot && this.shadowRoot.querySelector("#de-station-select");
+    const value = select ? String(select.value || "").trim() : "";
+    if (!value) return;
+
+    const selectedOption = select.selectedOptions && select.selectedOptions[0];
+    const selectedName = selectedOption ? selectedOption.dataset.name : "";
+    this.commitConfig({
+      ...this.config,
+      provider: "de_pegelonline",
+      de_station: value,
+      gauge: value,
+      title: selectedName || this.config.title,
+      units: "metric",
     });
   }
 
@@ -1593,6 +2003,11 @@ class RiverWiseCardEditor extends HTMLElement {
       config.provider = "uk_ea";
       config.uk_station = String(value).trim();
       config.gauge = config.uk_station;
+    } else if (key === "de_station") {
+      config.provider = "de_pegelonline";
+      config.de_station = String(value).trim();
+      config.gauge = config.de_station;
+      config.units = "metric";
     } else if (key === "gauge_state") {
       config.gauge_state = String(value).trim().toUpperCase();
     } else if (key === "gauge_select") {
@@ -1613,10 +2028,24 @@ class RiverWiseCardEditor extends HTMLElement {
       if (selectedName) {
         config.title = selectedName;
       }
+    } else if (key === "de_station_select") {
+      if (!value) return;
+      config.provider = "de_pegelonline";
+      config.de_station = String(value).trim();
+      config.gauge = config.de_station;
+      config.units = "metric";
+      const selectedOption = target.selectedOptions && target.selectedOptions[0];
+      const selectedName = selectedOption ? selectedOption.dataset.name : "";
+      if (selectedName) {
+        config.title = selectedName;
+      }
     } else if (key === "provider") {
       config.provider = value;
       if (value === "uk_ea") {
         config.gauge = config.uk_station || config.gauge || "";
+      } else if (value === "de_pegelonline") {
+        config.gauge = config.de_station || config.gauge || "";
+        config.units = "metric";
       }
     } else {
       config[key] = value;
@@ -1627,11 +2056,15 @@ class RiverWiseCardEditor extends HTMLElement {
       this.lookupGaugeName(config.gauge);
     } else if (key === "uk_station") {
       this.lookupUkStationName(config.uk_station);
+    } else if (key === "de_station") {
+      this.lookupDeStationName(config.de_station);
     } else if (key === "gauge_state") {
       this.stateGaugeOptions = [];
       this.loadStateGaugeOptions(config.gauge_state);
     } else if (key === "provider" && config.provider === "uk_ea" && !this.ukStationLoadedOnce) {
       this.loadUkStationOptions();
+    } else if (key === "provider" && config.provider === "de_pegelonline" && !this.deStationLoadedOnce) {
+      this.loadDeStationOptions();
     }
   }
 
@@ -1670,6 +2103,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "river-wise-card",
   name: "RiverWise Card",
-  description: "NOAA/NWS river, lake, reservoir, and flood gauge card",
+  description: "US, UK, and Germany river, lake, reservoir, and flood gauge card",
   preview: true,
 });

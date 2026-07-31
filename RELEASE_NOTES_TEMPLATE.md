@@ -30,6 +30,8 @@ US NOAA/NWS NWPS gauges can show observed and forecast hydrographs where availab
 
 UK Environment Agency support currently renders observed readings only because the EA flood-monitoring API does not provide the same NWPS-style forecast crest feed.
 
+Germany PEGELONLINE support renders observed water levels and optional discharge for federal-waterway stations.
+
 ### Install
 
 Use HACS as a custom Dashboard repository:
