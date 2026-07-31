@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.2.8
+
+### Changed
+
+- Confirmed the repository and package metadata use the MIT License with no separate commercial-use restrictions.
+- Refreshed release metadata and documentation for HACS default-catalog submission.
 
 ## 0.2.7
 
