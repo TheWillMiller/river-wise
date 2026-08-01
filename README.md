@@ -1,5 +1,9 @@
 # RiverWise
 
+<p align="center">
+  <img src="images/riverwise-icon@2x.png" alt="RiverWise river level icon" width="160">
+</p>
+
 [![GitHub release](https://img.shields.io/github/v/release/TheWillMiller/river-wise)](https://github.com/TheWillMiller/river-wise/releases)
 [![Validate](https://img.shields.io/github/actions/workflow/status/TheWillMiller/river-wise/validate.yml?branch=main&label=validate)](https://github.com/TheWillMiller/river-wise/actions/workflows/validate.yml)
 [![GitHub stars](https://img.shields.io/github/stars/TheWillMiller/river-wise?label=stars)](https://github.com/TheWillMiller/river-wise/stargazers)
