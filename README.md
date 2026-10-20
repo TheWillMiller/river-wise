@@ -11,6 +11,8 @@
 
 **Latest release:** `v0.2.9`
 
+**Prepared next version:** `v0.2.10` (automatic gauge refresh; not yet published).
+
 RiverWise is a Home Assistant dashboard (Lovelace) custom card for river, lake, reservoir, tailwater, and flood gauges.
 
 It displays current stage, flow when available, trend, observed/forecast hydrographs, flood thresholds, crest summaries, and optional flood impact statements using public government water data.
@@ -52,6 +54,8 @@ Helpful details include Home Assistant version, HACS version, RiverWise version,
 
 ## Features
 
+- Automatically refreshes provider data every 15 minutes while connected.
+- Cancels pending requests and stops polling when removed; refreshes immediately on reconnection.
 - Current gauge name, ID, stage, flow, trend, and update time
 - Flood category awareness from NWPS metadata where available
 - Observed river-stage hydrograph
@@ -66,6 +70,8 @@ Helpful details include Home Assistant version, HACS version, RiverWise version,
 - Germany PEGELONLINE station search and lookup by UUID, station number, or short name
 - Home Assistant theme-aware styling
 - Hidden YAML-only debug output for troubleshooting
+
+Refreshes do not overlap. Provider errors are retried at the next interval, and changing the card configuration cancels the old request before fetching the new selection. The cadence matches TideWise and the [Environment Agency's 15-minute readings update cycle](https://environment.data.gov.uk/flood-monitoring/doc/reference#readings); individual gauges may report less often. Browser suspension can delay timers.
 
 ## Installation
 

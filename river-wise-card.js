@@ -107,6 +107,8 @@ const RIVER_WISE_STATE_NAMES = {
 };
 
 const RIVER_WISE_PEGELONLINE_BASE = "https://www.pegelonline.wsv.de/webservices/rest-api/v2";
+// Match TideWise's provider refresh cadence.
+const RIVER_WISE_REFRESH_INTERVAL = 15 * 60 * 1000;
 
 class RiverWiseCard extends HTMLElement {
   setConfig(config) {
@@ -114,6 +116,7 @@ class RiverWiseCard extends HTMLElement {
       throw new Error("RiverWise requires a gauge id");
     }
 
+    this.cancelLoad();
     this.config = {
       provider: "us_nwps",
       de_station: "",
@@ -131,6 +134,22 @@ class RiverWiseCard extends HTMLElement {
 
     this.renderShell();
     this.load();
+  }
+
+  connectedCallback() {
+    if (this._refreshInterval != null) return;
+    this._refreshInterval = setInterval(() => this.load(), RIVER_WISE_REFRESH_INTERVAL);
+    this.load();
+  }
+
+  disconnectedCallback() {
+    clearInterval(this._refreshInterval);
+    this._refreshInterval = null;
+    this.cancelLoad();
+  }
+
+  cancelLoad() {
+    if (this._loadController) this._loadController.abort();
   }
 
   set hass(value) {
@@ -162,6 +181,12 @@ class RiverWiseCard extends HTMLElement {
   }
 
   async load() {
+    if (!this.isConnected || !this.config || this._loadController) return;
+    const config = this.config;
+    const controller = new AbortController();
+    this._loadController = controller;
+    const { signal } = controller;
+    const isCurrent = () => this.isConnected && this.config === config && !signal.aborted;
     const debug = {
       provider: this.config.provider || "us_nwps",
       endpoint: this.endpoint(),
@@ -176,48 +201,66 @@ class RiverWiseCard extends HTMLElement {
 
     try {
       if (this.config.provider === "uk_ea") {
-        const model = await this.loadUkEa(debug);
-        this.render(model);
+        const model = await this.loadUkEa(debug, config, signal);
+        if (isCurrent()) this.render(model);
         return;
       }
       if (this.config.provider === "de_pegelonline") {
-        const model = await this.loadDePegelonline(debug);
-        this.render(model);
+        const model = await this.loadDePegelonline(debug, config, signal);
+        if (isCurrent()) this.render(model);
         return;
       }
 
-      const metadataPromise = this.fetchJson(this.endpoint());
-      const observedPromise = this.fetchJson(this.endpoint("/stageflow/observed"));
+      const metadataPromise = this.fetchJson(this.endpoint(), signal);
+      const observedPromise = this.fetchJson(this.endpoint("/stageflow/observed"), signal);
       const forecastPromise = this.config.show_forecast
-        ? this.fetchJson(this.endpoint("/stageflow/forecast")).catch((error) => {
+        ? this.fetchJson(this.endpoint("/stageflow/forecast"), signal).catch((error) => {
             debug.fallbackBehavior.push(`Forecast unavailable: ${error.message}`);
             return null;
           })
         : Promise.resolve(null);
 
-      const [metadata, observed, forecast] = await Promise.all([
+      const [metadata, observed, forecast] = await this.settleRequests([
         metadataPromise,
         observedPromise,
         forecastPromise,
       ]);
 
-      const model = this.normalize(metadata, observed, forecast, debug);
-      this.render(model);
+      if (isCurrent()) {
+        const model = this.normalize(metadata, observed, forecast, debug);
+        this.render(model);
+      }
     } catch (error) {
-      this.renderError(error, debug);
+      if (isCurrent()) this.renderError(error, debug);
+    } finally {
+      this._loadController = null;
+      // A removal/reconfiguration aborts this batch. If already reconnected,
+      // fetch the latest configuration once the old requests have settled.
+      if (signal.aborted) this.load();
     }
   }
 
-  async fetchJson(url) {
-    const response = await fetch(url, { mode: "cors" });
+  async settleRequests(requests) {
+    // Keep the batch in flight until every request settles, even on failure.
+    const results = await Promise.allSettled(requests);
+    const failed = results.find((result) => result.status === "rejected");
+    if (failed) throw failed.reason;
+    return results.map((result) => result.value);
+  }
+
+  async fetchJson(url, signal) {
+    if (signal) signal.throwIfAborted();
+    const response = await fetch(url, { mode: "cors", signal });
     if (!response.ok) {
       throw new Error(`${response.status} ${response.statusText}`);
     }
-    return response.json();
+    const data = await response.json();
+    if (signal) signal.throwIfAborted();
+    return data;
   }
 
-  async loadUkEa(debug) {
-    const stationId = String(this.config.uk_station || this.config.gauge || "").trim();
+  async loadUkEa(debug, config = this.config, signal) {
+    const stationId = String(config.uk_station || config.gauge || "").trim();
     if (!stationId) {
       throw new Error("RiverWise UK provider requires a station reference");
     }
@@ -225,7 +268,7 @@ class RiverWiseCard extends HTMLElement {
     const stationUrl = `https://environment.data.gov.uk/flood-monitoring/id/stations/${encodeURIComponent(stationId)}?_view=full`;
     debug.endpoint = stationUrl;
 
-    const stationData = await this.fetchJson(stationUrl);
+    const stationData = await this.fetchJson(stationUrl, signal);
     const station = stationData && stationData.items ? stationData.items : {};
     const measures = this.eaMeasures(station);
     const levelMeasure = this.pickEaMeasure(measures, "level");
@@ -236,7 +279,7 @@ class RiverWiseCard extends HTMLElement {
     }
 
     const readingsUrl = `${this.httpsUrl(levelMeasure["@id"])}/readings?_sorted&_limit=288`;
-    const readingsData = await this.fetchJson(readingsUrl);
+    const readingsData = await this.fetchJson(readingsUrl, signal);
     const observedPoints = this.normalizeEaReadings(readingsData && readingsData.items);
     const latest = observedPoints.length ? observedPoints[observedPoints.length - 1] : null;
     const previous = observedPoints.length > 4
@@ -249,7 +292,7 @@ class RiverWiseCard extends HTMLElement {
     let flowUnit = "";
     if (flowMeasure && flowMeasure["@id"]) {
       try {
-        const flowData = await this.fetchJson(`${this.httpsUrl(flowMeasure["@id"])}/readings?latest`);
+        const flowData = await this.fetchJson(`${this.httpsUrl(flowMeasure["@id"])}/readings?latest`, signal);
         const flowItems = Array.isArray(flowData.items) ? flowData.items : [];
         const latestFlow = flowItems.length ? flowItems[flowItems.length - 1] : null;
         flow = this.validNumber(latestFlow && latestFlow.value);
@@ -280,7 +323,7 @@ class RiverWiseCard extends HTMLElement {
       observed: readingsData,
       forecast: null,
       debug,
-      name: station.label || this.config.title || stationId,
+      name: station.label || config.title || stationId,
       id: station.stationReference || station.notation || stationId,
       stage: latest ? latest.stage : null,
       stageUnit: levelMeasure.unitName || "m",
@@ -301,8 +344,8 @@ class RiverWiseCard extends HTMLElement {
     };
   }
 
-  async loadDePegelonline(debug) {
-    const stationId = String(this.config.de_station || this.config.gauge || "").trim();
+  async loadDePegelonline(debug, config = this.config, signal) {
+    const stationId = String(config.de_station || config.gauge || "").trim();
     if (!stationId) {
       throw new Error("RiverWise Germany provider requires a PEGELONLINE station");
     }
@@ -311,9 +354,9 @@ class RiverWiseCard extends HTMLElement {
     const measurementsUrl = `${RIVER_WISE_PEGELONLINE_BASE}/stations/${encodeURIComponent(stationId)}/W/measurements.json?start=P7D`;
     debug.endpoint = stationUrl;
 
-    const [station, measurements] = await Promise.all([
-      this.fetchJson(stationUrl),
-      this.fetchJson(measurementsUrl),
+    const [station, measurements] = await this.settleRequests([
+      this.fetchJson(stationUrl, signal),
+      this.fetchJson(measurementsUrl, signal),
     ]);
     const waterLevel = this.pickDeTimeseries(station && station.timeseries, "W");
     if (!waterLevel) {
@@ -355,7 +398,7 @@ class RiverWiseCard extends HTMLElement {
       observed: measurements,
       forecast: null,
       debug,
-      name: station.longname || station.shortname || this.config.title || stationId,
+      name: station.longname || station.shortname || config.title || stationId,
       id: station.number || station.uuid || stationId,
       stage: currentStage,
       stageUnit: waterLevel.unit || "cm",

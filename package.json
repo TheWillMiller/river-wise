@@ -1,6 +1,6 @@
 {
   "name": "river-wise-card",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "US, UK, and Germany river, lake, reservoir, and flood gauge dashboard card for Home Assistant.",
   "type": "module",
   "files": [
@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "check": "node --check river-wise-card.js",
-    "test": "node tests/provider-behavior.test.mjs"
+    "test": "node --test tests/provider-behavior.test.mjs tests/refresh-lifecycle.test.mjs"
   },
   "keywords": [
     "home-assistant",

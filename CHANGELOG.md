@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.10
+
+### Fixed
+
+- Refresh gauge readings every 15 minutes while the card is connected, for US NWPS, UK Environment Agency, and Germany PEGELONLINE providers.
+- Stop the refresh timer and cancel pending requests when the card is removed; refresh immediately when it reconnects.
+- Prevent duplicate timers, overlapping refresh batches, and stale results or errors after removal or configuration changes.
+- Keep automatic retries running after provider errors.
+
+### Added
+
+- Deterministic regression tests for refresh timing, request cancellation, reconnection, provider errors, and configuration changes.
+
 ## 0.2.9
 
 ### Added

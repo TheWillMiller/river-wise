@@ -22,5 +22,5 @@ jobs:
       - name: JavaScript syntax check
         run: npm run check
 
-      - name: Provider behavior tests
+      - name: Provider and refresh lifecycle tests
         run: npm test
