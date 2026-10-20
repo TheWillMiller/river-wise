@@ -1,7 +1,5 @@
 ## RiverWise v0.2.10
 
-Prepared release — not yet published.
-
 RiverWise now refreshes river readings automatically on dashboards left open.
 
 ### Highlights
@@ -20,7 +18,7 @@ US NOAA/NWS NWPS gauges can show observed and forecast hydrographs where availab
 
 ### Install
 
-After this version is published, update RiverWise through HACS and refresh the browser.
+Update RiverWise through HACS and refresh the browser.
 
 Repository: https://github.com/TheWillMiller/river-wise
 
